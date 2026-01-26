@@ -45,13 +45,13 @@ Built via `buildHistoryContextFromEntries()`:
 
 ### Compaction
 
-`src/agents/compaction.ts`
-
-When context pressure builds:
+Handled by **Pi Agent** (not Clawdbot). When context pressure builds:
 - Token-based chunking
-- `generateSummary()` creates summaries
+- `generateSummary()` from `@mariozechner/pi-coding-agent` creates summaries
 - Compression ratio: 0.4 down to 0.15
 - Safety margin: 1.2x buffer
+
+Pi Agent codebase: `pi-mono/packages/coding-agent/src/core/compaction/`
 
 ### Context Pruning
 

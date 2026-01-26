@@ -143,13 +143,39 @@ This is NOT the same as DM session history. Group history is ephemeral context, 
 
 ---
 
+## Auto-Compaction on Context Overflow
+
+What happens if history gets too large for the model's context window?
+
+**Pi Agent** (the underlying runtime library, not Clawdbot) handles this automatically:
+
+1. **Detect overflow** - LLM provider returns a context length error
+2. **Trigger compaction** - Pi Agent summarizes older messages using `generateSummary()`
+3. **Retry** - If compaction succeeds, the prompt is retried with compressed history
+
+```
+Context overflow → Auto-compaction → Summarize old turns → Retry prompt
+```
+
+Compaction uses token-based chunking with adaptive ratios. Large messages get smaller chunks to stay within limits. A 20% safety margin accounts for token estimation inaccuracy.
+
+If compaction fails (nothing left to compact, or still too large), the error propagates to the user.
+
+**Key files** (Pi Agent codebase, not Clawdbot):
+- `pi-mono/packages/coding-agent/src/core/compaction/` - compaction logic
+- `generateSummary()` from `@mariozechner/pi-coding-agent`
+
+---
+
 ## Summary
 
 ```
 Session File → Load → Sanitize → Limit (if configured) → Hooks → Repair → Append Message → LLM
+                                                                                          ↓
+                                                                    (if overflow) → Auto-compact → Retry
 ```
 
-No automatic RAG. No default turn limit. History grows unbounded unless you configure `dmHistoryLimit`.
+No automatic RAG. No default turn limit. History grows unbounded unless you configure `dmHistoryLimit`, but auto-compaction kicks in if you hit the context window ceiling.
 
 ---
 
