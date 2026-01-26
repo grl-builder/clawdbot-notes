@@ -84,6 +84,8 @@ Your actual message text, plus any media (images, files) you attached. The messa
 [Telegram From YourName 2024-01-15 10:30:00] Did the test implementations complete? What's the status?
 ```
 
+**No additional context is injected.** There's no automatic "remember X, Y, Z" prepended to your message. Memory recall happens via tool calls during the agent loop (see [Memory System](#memory-system)).
+
 ### 2. System Prompt
 
 The system prompt tells the LLM who it is and what it can do. Built by `buildAgentSystemPrompt()`:
