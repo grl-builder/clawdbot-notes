@@ -10,6 +10,41 @@ Clawdbot uses [Pi Agent](https://github.com/badlogic/pi-mono) (`@mariozechner/pi
 
 This doc explains what goes into that context and how it flows through the runtime.
 
+```mermaid
+graph LR
+    subgraph routing [Routing]
+        A[Message Arrives] --> B[Route to Agent]
+    end
+    
+    subgraph assembly [Context Assembly]
+        B --> C[System Prompt]
+        B --> D[Session History]
+        B --> E[Your Message]
+    end
+    
+    subgraph llmLoop [LLM Loop]
+        C & D & E --> F[Send to LLM]
+        F --> G[Response]
+        G --> H{Tools?}
+        H -->|Yes| I[Execute Tools]
+        I --> F
+        H -->|No| J[Final Response]
+    end
+    
+    subgraph memory [Memory - just files]
+        MEM[(memory files)]
+    end
+    
+    I -.->|memory_search| MEM
+    I -.->|"write/edit"| MEM
+    
+    subgraph completion [Turn Completion]
+        J --> K[Save to Session]
+        K --> L[Deliver Reply]
+        L --> M[Compaction Check]
+    end
+```
+
 ## Context Assembly
 
 When you send a message, the runtime assembles several pieces of context before calling the LLM:
@@ -124,22 +159,36 @@ The system prompt is entirely Clawdbot's - Pi Agent receives it as a parameter. 
 
 For a deeper dive into this architecture, see [Clawdbot vs Pi Agent Runtime](clawdbot-vs-pi-agent.md).
 
-## Session Storage
+### Memory System
 
-Sessions are stored as newline-delimited JSON files:
+Memory is just **files + instructions** - no special learning mechanism.
 
+**Reading memory**: Clawdbot provides `memory_search` and `memory_get` tools. The system prompt instructs: *"Before answering anything about prior work, decisions, dates, people, preferences, or todos: run memory_search..."*
+
+**Writing memory**: Uses Pi Agent's standard `write` and `edit` tools. The `AGENTS.md` bootstrap file instructs the agent:
 ```
-~/.clawdbot/agents/main/sessions/main.jsonl
-```
-
-Each line is a JSON object representing one event in the conversation:
-
-```json
-{"role":"user","content":"[Telegram From You...] Hello!","timestamp":1705312200}
-{"role":"assistant","content":"Hi there! How can I help?","timestamp":1705312205}
+## Memory system (recommended)
+- Daily log: memory/YYYY-MM-DD.md
+- Long-term memory: memory.md for durable facts, preferences, decisions
 ```
 
-The session file grows as you converse. Compaction can summarize older turns to keep context manageable.
+When you say "remember I prefer TypeScript":
+1. Agent follows AGENTS.md instructions
+2. Agent calls `write` or `edit` to update `memory.md` or `memory/YYYY-MM-DD.md`
+3. This is a normal tool call during the agent loop - not post-processing
+
+There's no automatic preference extraction. Nothing is written unless the agent decides to (based on your request and AGENTS.md guidance).
+
+## Turn Completion
+
+When the agent produces its final response (no more tool calls), the turn is complete:
+
+1. **Response appended** to session `.jsonl` file
+2. **Reply delivered** to the originating channel (Telegram, WhatsApp, etc.)
+3. **Usage tracked** (tokens, model, provider) in session metadata
+4. **Compaction check** - Pi Agent checks if context is near the limit and proactively compacts history if needed
+
+There's no automatic learning or preference extraction after each turn. For details on session persistence and memory mechanisms, see [Session Persistence](conversation-history.md).
 
 ## Key Code Locations
 
@@ -156,9 +205,9 @@ The session file grows as you converse. Compaction can summarize older turns to 
 When you send a message:
 
 1. **Routing** determines the agent and session (`agent:main:main`)
-2. **Context assembly** gathers system prompt (with bootstrap files), history
+2. **Context assembly** gathers system prompt (with bootstrap files), session history, your message
 3. **Pi Agent** sends everything to the LLM
-4. **Response** streams back, tools execute if needed
-5. **Session** is updated and reply is delivered
+4. **Response** streams back, tools execute if needed (loop until final response)
+5. **Turn completes** - response saved, reply delivered
 
-The context window the LLM sees is the sum of all these pieces - system prompt + history + your message.
+The context window the LLM sees = system prompt + session history + your message.

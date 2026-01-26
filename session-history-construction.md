@@ -165,6 +165,8 @@ If compaction fails (nothing left to compact, or still too large), the error pro
 - `pi-mono/packages/coding-agent/src/core/compaction/` - compaction logic
 - `generateSummary()` from `@mariozechner/pi-coding-agent`
 
+> **Note**: Pi Agent also performs **threshold-based compaction** after successful turns when context is near the limit. That's documented in [Turn Completion](agent-context-and-runtime.md#turn-completion).
+
 ---
 
 ## Summary

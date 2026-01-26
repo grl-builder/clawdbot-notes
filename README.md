@@ -16,7 +16,7 @@ The topics below follow the journey of a message through the system, roughly in 
    - [Clawdbot vs Pi Agent](clawdbot-vs-pi-agent.md) - Deep dive into the division of labor between Clawdbot and its underlying agent library.
    - [Session History Construction](session-history-construction.md) - Step-by-step flow of loading, sanitizing, and preparing session history.
 
-4. **[Conversation History](conversation-history.md)** - Where your conversation lives on disk, how compaction works, and context window management.
+4. **[Conversation History](conversation-history.md)** - What happens after the agent responds: session persistence, storage locations, and memory/learning mechanisms.
 
 ## Reference
 

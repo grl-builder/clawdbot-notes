@@ -1,78 +1,99 @@
-# Conversation History
+# Session Persistence
 
-How clawdbot stores, retrieves, and manages conversation history.
+What happens after the agent responds - how conversations are saved and how memory works.
 
-## Storage Mechanisms
+## Appending to Session File
 
-### 1. File-based (Agent Sessions)
-
-- Location: `~/.clawdbot/sessions/`
-- Format: `.jsonl` (newline-delimited JSON)
-- Managed by: `SessionManager` from pi-coding-agent library
-- Contains: role, content, timestamps, message IDs
-
-### 2. In-memory (Group Chats)
-
-- Structure: `Map<string, HistoryEntry[]>`
-- Location: `src/auto-reply/reply/history.ts`
-- Default limit: 50 messages (`DEFAULT_GROUP_HISTORY_LIMIT`)
-- Cleared when conversation context ends
-
-## Retrieval
-
-### Agent History
-
-`limitHistoryTurns()` in `src/agents/pi-embedded-runner/history.ts`
-
-- Iterates backwards to find last N user turns
-- Per-DM limits via config: `channels.{provider}.dmHistoryLimit`
-
-### Group Chat History
-
-Built via `buildHistoryContextFromEntries()`:
-- Marker: `[Chat messages since your last reply - for context]`
-- Formatted with sender, body, timestamp
-
-## Summarization & Truncation
-
-### Turn-based Limiting
-
-`limitHistoryTurns()` - keeps last N user turns
-
-### Message Count Limiting
-
-`appendHistoryEntry()` - FIFO removal when over limit
-
-### Compaction
-
-Handled by **Pi Agent** (not Clawdbot). When context pressure builds:
-- Token-based chunking
-- `generateSummary()` from `@mariozechner/pi-coding-agent` creates summaries
-- Compression ratio: 0.4 down to 0.15
-- Safety margin: 1.2x buffer
-
-Pi Agent codebase: `pi-mono/packages/coding-agent/src/core/compaction/`
-
-### Context Pruning
-
-`src/agents/pi-extensions/context-pruning/pruner.ts`
-
-- Removes tool results exceeding token budget
-- Preserves user/assistant turns
-- ~4 chars per token estimate
-- Images: ~8k chars each
-
-## Context Window Management
-
-`src/agents/context-window-guard.ts`
+After each turn, Pi Agent's `SessionManager` appends entries to the session file:
 
 ```
-CONTEXT_WINDOW_HARD_MIN_TOKENS = 16,000
-CONTEXT_WINDOW_WARN_BELOW_TOKENS = 32,000
+~/.clawdbot/agents/{agentId}/sessions/{sessionId}.jsonl
 ```
 
-Resolution priority:
-1. Model's `contextWindow` property
-2. Config: `models.providers.{provider}.models.{id}.contextWindow`
-3. Agent config: `agents.defaults.contextTokens`
-4. Default constant
+Example entries:
+
+```json
+{"type":"message","message":{"role":"user","content":"[Telegram From You...] Hello!"},"timestamp":1705312200}
+{"type":"message","message":{"role":"assistant","content":"Hi there!"},"timestamp":1705312205}
+```
+
+Each line is a complete JSON object. Tool calls and results are also stored:
+
+```json
+{"type":"message","message":{"role":"assistant","content":[{"type":"toolCall","id":"call_1","name":"read",...}]},...}
+{"type":"message","message":{"role":"user","content":[{"type":"toolResult","toolUseId":"call_1","content":"..."}]},...}
+```
+
+For the complete file format, see [Session Schema](reference/session-schema.md).
+
+---
+
+## Storage Location
+
+| Session Type | Path |
+|--------------|------|
+| Default DM | `~/.clawdbot/agents/main/sessions/main.jsonl` |
+| Telegram group | `~/.clawdbot/agents/main/sessions/telegram:group:12345.jsonl` |
+| Custom agent | `~/.clawdbot/agents/{agentId}/sessions/{sessionId}.jsonl` |
+
+Pi Agent's `SessionManager` (from `@mariozechner/pi-coding-agent`) handles all reads and writes.
+
+---
+
+## Group Chat Context (Ephemeral)
+
+**Why this exists**: In group chats, the bot only responds when mentioned. But it needs to know what people were discussing before being pinged. This in-memory buffer captures recent group messages to provide that context.
+
+**How it works**:
+- **Storage**: `Map<string, HistoryEntry[]>` - in-memory, not persisted to disk
+- **Limit**: 50 messages (`DEFAULT_GROUP_HISTORY_LIMIT`)
+- **Lifetime**: Cleared when the process restarts
+- **Injected as**: `[Chat messages since your last reply - for context]`
+
+**This is separate from session files**. Group chats can still have persistent `.jsonl` session files (e.g., `telegram:group:12345.jsonl`) for the bot's own conversation history. The ephemeral buffer is *additional* context about what others said in the group.
+
+---
+
+## Post-Turn Memory Events
+
+Memory reading/writing during the agent loop is covered in [Agent Context and Runtime](agent-context-and-runtime.md#memory-system). This section covers events that happen **after** the turn completes or at session boundaries.
+
+### Session Memory Hook (on `/new`)
+
+When you start a new session with `/new`, the **session-memory hook** saves a summary of the previous session:
+
+```
+memory/{date}-{slug}.md
+```
+
+What it does:
+1. Extracts last 15 messages from the ending session
+2. Uses LLM to generate a descriptive slug (e.g., `2024-01-15-refactor-auth-flow.md`)
+3. Writes a markdown file with session metadata and conversation summary
+
+This only fires on `/new` command, not after every response.
+
+**Source**: `src/hooks/bundled/session-memory/handler.ts`
+
+### Pre-Compaction Memory Flush
+
+If a session approaches the token limit, the system triggers a memory flush before compaction:
+
+1. Prompts the agent: "Pre-compaction memory flush. Store durable memories now"
+2. Agent gets one turn to save important info to `memory/YYYY-MM-DD.md`
+3. Then compaction summarizes older history
+
+This gives the agent a chance to preserve important context before it gets compressed.
+
+**Source**: `src/auto-reply/reply/memory-flush.ts`
+
+---
+
+## Key Files
+
+| Component | File |
+|-----------|------|
+| Session Manager | `@mariozechner/pi-coding-agent` (Pi Agent library) |
+| Group history | `src/auto-reply/reply/history.ts` |
+| Memory tools | `src/agents/tools/memory-tool.ts` |
+| Session memory hook | `src/hooks/bundled/session-memory/handler.ts` |
