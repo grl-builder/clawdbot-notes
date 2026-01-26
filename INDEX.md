@@ -6,6 +6,7 @@ Notes on clawdbot's internals, focusing on message handling and prompt construct
 
 - [Message to Response](message-to-response.md) - The journey from incoming message to AI response
 - [Conversation History](conversation-history.md) - How history is stored, retrieved, and managed
+- [Telegram Message Flow](telegram-message-flow.md) - How Telegram messages reach your server and get processed
 
 ## Key Source Files
 
