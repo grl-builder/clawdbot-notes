@@ -14,7 +14,9 @@ The topics below follow the journey of a message through the system, roughly in 
 
 3. **[Agent Context and Runtime](agent-context-and-runtime.md)** - The core of what makes responses work. How the system assembles your message, conversation history, system prompt, and workspace files into one context for the LLM.
 
-4. **[Conversation History](conversation-history.md)** - Where your conversation lives on disk, how it's loaded, and how compaction keeps things manageable.
+4. **[Session History Construction](session-history-construction.md)** - The step-by-step flow of loading, sanitizing, limiting, and preparing session history before it goes to the LLM.
+
+5. **[Conversation History](conversation-history.md)** - Where your conversation lives on disk, how it's loaded, and how compaction keeps things manageable.
 
 ## Key Source Files
 
