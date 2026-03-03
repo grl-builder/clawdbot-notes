@@ -12,13 +12,15 @@ The topics below follow the journey of a message through the system, roughly in 
 
 1. **[Telegram Message Flow](telegram-message-flow.md)** - How does a Telegram message even reach your server? Covers long polling, grammY, and the path from your phone to the agent.
 
-2. **[Agent Routing](agent-routing.md)** - Once a message arrives, which agent handles it? Explains session keys, binding priority, identity linking, and routing for multi-agent setups.
+2. **[Message Routing Flow](message-routing-flow.md)** - The complete journey from incoming message to routed session. Covers peer identification, binding evaluation, session key construction, and context loading with diagrams and concrete examples for DMs, groups, and forum topics.
 
-3. **[Agent Context and Runtime](agent-context-and-runtime.md)** - The core of what makes responses work. How the system assembles your message, conversation history, system prompt, and workspace files into one context for the LLM.
+3. **[Agent Routing](agent-routing.md)** - Reference for the routing system. Explains session keys, DM scopes, binding priority, identity linking, and routing for multi-agent setups.
+
+4. **[Agent Context and Runtime](agent-context-and-runtime.md)** - The core of what makes responses work. How the system assembles your message, conversation history, system prompt, and workspace files into one context for the LLM.
    - [OpenClaw vs Pi Agent](clawdbot-vs-pi-agent.md) - Deep dive into the division of labor between OpenClaw and its underlying agent library.
    - [Session History Construction](session-history-construction.md) - Step-by-step flow of loading, sanitizing, and preparing session history.
 
-4. **[Conversation History](conversation-history.md)** - What happens after the agent responds: session persistence, storage locations, and memory/learning mechanisms.
+5. **[Conversation History](conversation-history.md)** - What happens after the agent responds: session persistence, storage locations, and memory/learning mechanisms.
 
 ## Reference
 
