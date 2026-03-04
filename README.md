@@ -22,6 +22,8 @@ The topics below follow the journey of a message through the system, roughly in 
 
 5. **[Conversation History](conversation-history.md)** - What happens after the agent responds: session persistence, storage locations, and memory/learning mechanisms.
 
+6. **[Session Spawning Internals](session-spawning-internals.md)** - How `sessions_spawn` and cron jobs work under the hood. Covers session creation, command lanes, inter-session communication via `sessions_send`, result announcement, and the relationship between subagents and isolated cron sessions.
+
 ## Reference
 
 Technical specifications and templates:
@@ -47,6 +49,12 @@ If you want to jump straight into the code, these are the main files to look at:
 | Agent routing | `src/routing/resolve-route.ts` |
 | Session keys | `src/routing/session-key.ts` |
 | Agent scope | `src/agents/agent-scope.ts` |
+| Session store | `src/config/sessions/store.ts` |
+| Command lanes | `src/process/command-queue.ts` |
+| sessions_spawn | `src/agents/tools/sessions-spawn-tool.ts` |
+| sessions_send | `src/agents/tools/sessions-send-tool.ts` |
+| Subagent registry | `src/agents/subagent-registry.ts` |
+| Cron isolated run | `src/cron/isolated-agent/run.ts` |
 
 ## Changes from Clawdbot to OpenClaw
 
